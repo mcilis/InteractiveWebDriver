@@ -109,7 +109,8 @@ namespace InteractiveWebDriver
         /// </summary>
         /// <param name="sessionID">ID of the session to route the command to</param>
         /// <param name="script">The script to execute</param>
-        public static void ExecuteJavascript(string sessionID, string script)
+        /// <returns>The executed script is assumed to be synchronous and the result of evaluating the script is returned to the client.</returns>
+        public static string ExecuteJavascript(string sessionID, string script)
         {
             var client = new RestClient(ServerUrl);
             var request = new RestRequest("wd/hub/session/{id}/execute", Method.POST) { RequestFormat = DataFormat.Json };
@@ -117,6 +118,9 @@ namespace InteractiveWebDriver
             var parameterJson = new { script, args = new JsonArray() };
             request.AddParameter("application/json;charset=utf-8", SimpleJson.SerializeObject(parameterJson), ParameterType.RequestBody);
             var response = client.Execute(request);
+            var responseObject = SimpleJson.DeserializeObject<JsonObject>(response.Content);
+            var text = responseObject["value"].ToString();
+            return text;
         }
 
         /// <summary>
