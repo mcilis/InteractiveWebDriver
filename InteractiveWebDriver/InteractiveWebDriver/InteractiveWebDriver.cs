@@ -11,7 +11,7 @@ namespace InteractiveWebDriver
         /// Creates a new chrome session.
         /// </summary>
         /// <returns>Unique session ID</returns>
-        public static string CreateSession()
+        public static string CreateSession(string browser = "chrome")
         {
             var client = new RestClient(ServerUrl);
             var request = new RestRequest("wd/hub/session", Method.POST) { RequestFormat = DataFormat.Json };
@@ -19,7 +19,7 @@ namespace InteractiveWebDriver
             {
                 desiredCapabilities = new
                 {
-                    browserName = "chrome",
+                    browserName = browser,
                     platform = new
                     {
                         majorVersion = 0,
