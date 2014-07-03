@@ -1,4 +1,6 @@
-﻿using System.Net;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Net;
 using RestSharp;
 
 namespace InteractiveWebDriver
@@ -10,6 +12,7 @@ namespace InteractiveWebDriver
         /// <summary>
         /// Creates a new chrome session.
         /// </summary>
+        /// <param name="browser">Browser name. Possible values "chrome" (default), "firefox"</param>
         /// <returns>Unique session ID</returns>
         public static string CreateSession(string browser = "chrome")
         {
@@ -89,6 +92,39 @@ namespace InteractiveWebDriver
         }
 
         /// <summary>
+        /// Retrieve the list of all window handles available to the session, the first one is the main window handle.
+        /// To get the popup window handle take the second element of the list.
+        /// </summary>
+        /// <param name="sessionID">ID of the session to route the command to</param>
+        /// <returns>List of window handles</returns>
+        public static List<string> GetWindowHandles(string sessionID)
+        {
+            var client = new RestClient(ServerUrl);
+            var request = new RestRequest("wd/hub/session/{id}/window_handles", Method.GET);
+            request.AddUrlSegment("id", sessionID);
+            var response = client.Execute(request);
+            var responseObject = SimpleJson.DeserializeObject<JsonObject>(response.Content);
+            var responseArray = (JsonArray)responseObject["value"];
+
+            return responseArray.Select(handleID => handleID != null ? handleID.ToString() : "").ToList();
+        }
+
+        /// <summary>
+        /// Change focus to another window (popup) on the page for the specified session.
+        /// </summary>
+        /// <param name="sessionID">ID of the session to route the command to</param>
+        /// <param name="windowHandleID">Identifier for the frame to change focus to</param>
+        public static void SwitchToWindow(string sessionID, string windowHandleID = "")
+        {
+            var client = new RestClient(ServerUrl);
+            var request = new RestRequest("wd/hub/session/{id}/window", Method.POST) { RequestFormat = DataFormat.Json };
+            request.AddUrlSegment("id", sessionID);
+            var parameterJson = new { name = windowHandleID };
+            request.AddParameter("application/json;charset=utf-8", SimpleJson.SerializeObject(parameterJson), ParameterType.RequestBody);
+            client.Execute(request);
+        }
+
+        /// <summary>
         /// Get the current page source.
         /// </summary>
         /// <param name="sessionID">ID of the session to route the command to</param>
@@ -119,7 +155,7 @@ namespace InteractiveWebDriver
             request.AddParameter("application/json;charset=utf-8", SimpleJson.SerializeObject(parameterJson), ParameterType.RequestBody);
             var response = client.Execute(request);
             var responseObject = SimpleJson.DeserializeObject<JsonObject>(response.Content);
-            var text = responseObject["value"].ToString();
+            var text = responseObject["value"] != null ? responseObject["value"].ToString() : "";
             return text;
         }
 
@@ -165,20 +201,9 @@ namespace InteractiveWebDriver
         /// <returns>Visible text for the html element</returns>
         public static string GetElementText(string sessionID, string selectorValue, string selectorType = "id")
         {
-            var text = "";
             var elementID = FindElement(sessionID, selectorValue, selectorType);
 
-            if (elementID == -1) 
-                return text;
-
-            var client = new RestClient(ServerUrl);
-            var request = new RestRequest("wd/hub/session/{id}/element/{elementID}/text", Method.GET);
-            request.AddUrlSegment("id", sessionID);
-            request.AddUrlSegment("elementID", elementID.ToString("0"));
-            var response = client.Execute(request);
-            var responseObject = SimpleJson.DeserializeObject<JsonObject>(response.Content);
-            text = responseObject["value"].ToString();
-            return text;
+            return elementID == -1 ? "" : GetElementText(sessionID, elementID);
         }
 
         /// <summary>
@@ -213,13 +238,7 @@ namespace InteractiveWebDriver
             if (elementID == -1) 
                 return;
 
-            var client = new RestClient(ServerUrl);
-            var request = new RestRequest("wd/hub/session/{id}/element/{elementID}/value", Method.POST);
-            request.AddUrlSegment("id", sessionID);
-            request.AddUrlSegment("elementID", elementID.ToString("0"));
-            var parameterJson = new { value = new JsonArray { elementText } };
-            request.AddParameter("application/json;charset=utf-8", SimpleJson.SerializeObject(parameterJson), ParameterType.RequestBody);
-            client.Execute(request);
+            SetElementText(sessionID, elementText, elementID);
         }
 
         /// <summary>
@@ -240,6 +259,20 @@ namespace InteractiveWebDriver
         }
 
         /// <summary>
+        /// Select the specified option of the html select box.
+        /// </summary>
+        /// <param name="sessionID">ID of the session to route the command to</param>
+        /// <param name="optionValue">Selectbox option element to be selected</param>
+        /// <param name="selectorValue">Selectbox name or id (differentiated by selectorType parameter)</param>
+        /// <param name="selectorType">Possible values: "id" (default), "name"</param>
+        public static void SetSelectOption(string sessionID, string optionValue, string selectorValue, string selectorType = "id")
+        {
+            var xpath = string.Format("//select[@{0}='{1}']/option[@value='{2}']", selectorType == "name" ? "name" : "id", selectorValue, optionValue);
+            
+            ClickOnElement(sessionID, xpath, "xpath");
+        }
+
+        /// <summary>
         /// Click on an element.
         /// </summary>
         /// <param name="sessionID">ID of the session to route the command to</param>
@@ -252,11 +285,7 @@ namespace InteractiveWebDriver
             if (elementID == -1)
                 return;
 
-            var client = new RestClient(ServerUrl);
-            var request = new RestRequest("wd/hub/session/{id}/element/{elementID}/click", Method.POST);
-            request.AddUrlSegment("id", sessionID);
-            request.AddUrlSegment("elementID", elementID.ToString("0"));
-            client.Execute(request);
+            ClickOnElement(sessionID, elementID);
         }
 
         /// <summary>
@@ -286,11 +315,7 @@ namespace InteractiveWebDriver
             if (elementID == -1)
                 return;
 
-            var client = new RestClient(ServerUrl);
-            var request = new RestRequest("wd/hub/session/{id}/element/{elementID}/clear", Method.POST);
-            request.AddUrlSegment("id", sessionID);
-            request.AddUrlSegment("elementID", elementID.ToString("0"));
-            client.Execute(request);
+            ClearElementText(sessionID, elementID);
         }
 
         /// <summary>
@@ -317,19 +342,8 @@ namespace InteractiveWebDriver
         public static bool IsElementVisible(string sessionID, string selectorValue, string selectorType = "id")
         {
             var elementID = FindElement(sessionID, selectorValue, selectorType);
-
-            if (elementID == -1)
-                return false;
-
-            var client = new RestClient(ServerUrl);
-            var request = new RestRequest("wd/hub/session/{id}/element/{elementID}/displayed", Method.GET);
-            request.AddUrlSegment("id", sessionID);
-            request.AddUrlSegment("elementID", elementID.ToString("0"));
-            var response = client.Execute(request);
-            var responseObject = SimpleJson.DeserializeObject<JsonObject>(response.Content);
-            bool isVisible;
-            bool.TryParse(responseObject["value"].ToString(), out isVisible);
-            return isVisible;
+            
+            return elementID != -1 && IsElementVisible(sessionID, elementID);
         }
 
         /// <summary>
@@ -350,5 +364,7 @@ namespace InteractiveWebDriver
             bool.TryParse(responseObject["value"].ToString(), out isVisible);
             return isVisible;
         }
+
+
     }
 }

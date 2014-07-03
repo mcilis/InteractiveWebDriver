@@ -44,6 +44,9 @@
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="ScenarioA.cs" />
+    <Compile Include="ScenarioB.cs" />
+    <Compile Include="ScenarioC.cs" />
+    <Compile Include="ScenarioD.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
