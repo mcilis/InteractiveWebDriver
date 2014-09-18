@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Configuration;
 using System.Linq;
 using System.Net;
 using RestSharp;
@@ -7,7 +8,12 @@ namespace InteractiveWebDriver
 {
     public static class InteractiveWebDriver
     {
-        private const string ServerUrl = "http://localhost:4444/";
+        private static readonly string ServerUrl; 
+
+        static InteractiveWebDriver()
+        {
+            ServerUrl = ConfigurationManager.AppSettings.Get("Common.InteractiveWebDriver.ServerUrl") ?? "http://localhost:4444/";
+        }
 
         /// <summary>
         /// Creates a new chrome session.
@@ -138,6 +144,49 @@ namespace InteractiveWebDriver
             var responseObject = SimpleJson.DeserializeObject<JsonObject>(response.Content);
             var text = responseObject["value"].ToString();
             return text;
+        }
+
+        /// <summary>
+        /// Gets the text of the currently displayed JavaScript alert(), confirm(), or prompt() dialog.
+        /// </summary>
+        /// <param name="sessionID">ID of the session to route the command to</param>
+        /// <returns>The text of the currently displayed alert.</returns>
+        public static string GetAlertText(string sessionID)
+        {
+            var client = new RestClient(ServerUrl);
+            var request = new RestRequest("wd/hub/session/{id}/alert_text", Method.GET);
+            request.AddUrlSegment("id", sessionID);
+            var response = client.Execute(request);
+            var responseObject = SimpleJson.DeserializeObject<JsonObject>(response.Content);
+            if (responseObject["status"].ToString().Equals("27"))
+                return "-1";
+            var text = responseObject["value"].ToString();
+            return text;
+        }
+
+        /// <summary>
+        /// Accepts the currently displayed alert dialog. Usually, this is equivalent to clicking on the 'OK' button in the dialog.
+        /// </summary>
+        /// <param name="sessionID">ID of the session to route the command to</param>
+        public static void AcceptAlert(string sessionID)
+        {
+            var client = new RestClient(ServerUrl);
+            var request = new RestRequest("wd/hub/session/{id}/accept_alert", Method.POST);
+            request.AddUrlSegment("id", sessionID);
+            client.Execute(request);
+        }
+
+        /// <summary>
+        /// Dismisses the currently displayed alert dialog. For confirm() and prompt() dialogs, this is equivalent to clicking the 'Cancel' button. 
+        /// For alert() dialogs, this is equivalent to clicking the 'OK' button.
+        /// </summary>
+        /// <param name="sessionID">ID of the session to route the command to</param>
+        public static void DismissAlert(string sessionID)
+        {
+            var client = new RestClient(ServerUrl);
+            var request = new RestRequest("wd/hub/session/{id}/dismiss_alert", Method.POST);
+            request.AddUrlSegment("id", sessionID);
+            client.Execute(request);
         }
 
         /// <summary>
