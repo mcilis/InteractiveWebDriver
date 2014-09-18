@@ -262,13 +262,27 @@ namespace InteractiveWebDriver
         /// Select the specified option of the html select box.
         /// </summary>
         /// <param name="sessionID">ID of the session to route the command to</param>
-        /// <param name="optionValue">Selectbox option element to be selected</param>
+        /// <param name="optionValue">The value of the selectbox option element to be selected</param>
         /// <param name="selectorValue">Selectbox name or id (differentiated by selectorType parameter)</param>
         /// <param name="selectorType">Possible values: "id" (default), "name"</param>
         public static void SetSelectOption(string sessionID, string optionValue, string selectorValue, string selectorType = "id")
         {
             var xpath = string.Format("//select[@{0}='{1}']/option[@value='{2}']", selectorType == "name" ? "name" : "id", selectorValue, optionValue);
             
+            ClickOnElement(sessionID, xpath, "xpath");
+        }
+
+        /// <summary>
+        /// Select the specified option of the html select box.
+        /// </summary>
+        /// <param name="sessionID">ID of the session to route the command to</param>
+        /// <param name="optionText">The text of the selectbox option element to be selected</param>
+        /// <param name="selectorValue">Selectbox name or id (differentiated by selectorType parameter)</param>
+        /// <param name="selectorType">Possible values: "id" (default), "name"</param>
+        public static void SetSelectOptionByOptionText(string sessionID, string optionText, string selectorValue, string selectorType = "id")
+        {
+            var xpath = string.Format("//select[@{0}='{1}']/option[normalize-space(text())='{2}']", selectorType == "name" ? "name" : "id", selectorValue, optionText);
+
             ClickOnElement(sessionID, xpath, "xpath");
         }
 
