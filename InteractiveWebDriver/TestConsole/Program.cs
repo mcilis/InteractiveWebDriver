@@ -7,7 +7,7 @@ namespace TestConsole
     {
         static void Main(string[] args)
         {
-            ScenarioD.Call();
+            ScenarioA.Call();
         }
     }
 }
