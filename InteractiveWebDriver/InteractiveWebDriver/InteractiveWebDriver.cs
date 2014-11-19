@@ -274,6 +274,41 @@ namespace InteractiveWebDriver
         }
 
         /// <summary>
+        /// Get the value of an element's attribute.
+        /// </summary>
+        /// <param name="sessionID">ID of the session to route the command to</param>
+        /// <param name="selectorValue">The search target</param>
+        /// <param name="selectorType">Possible values: "id" (default), "name", "link text", "partial link text", "tag name", "class name", "css selector", "xpath"</param>
+        /// <param name="attributeName">Name of the attribute</param>
+        /// <returns>Visible text for the html element</returns>
+        public static string GetElementAttributeValue(string sessionID, string attributeName, string selectorValue, string selectorType = "id")
+        {
+            var elementID = FindElement(sessionID, selectorValue, selectorType);
+
+            return elementID == -1 ? "" : GetElementAttributeValue(sessionID, attributeName, elementID);
+        }
+
+        /// <summary>
+        /// Get the value of an element's attribute.
+        /// </summary>
+        /// <param name="sessionID">ID of the session to route the command to</param>
+        /// <param name="driverElementID">Driver element ID (is found by FindElement method)</param>
+        /// <param name="attributeName">Name of the attribute</param>
+        /// <returns>Visible text for the html element</returns>
+        public static string GetElementAttributeValue(string sessionID, string attributeName, int driverElementID)
+        {
+            var client = new RestClient(ServerUrl);
+            var request = new RestRequest("wd/hub/session/{id}/element/{elementID}/attribute/{name}", Method.GET);
+            request.AddUrlSegment("id", sessionID);
+            request.AddUrlSegment("elementID", driverElementID.ToString("0"));
+            request.AddUrlSegment("name", attributeName);
+            var response = client.Execute(request);
+            var responseObject = SimpleJson.DeserializeObject<JsonObject>(response.Content);
+            var text = responseObject["value"].ToString();
+            return text;
+        }
+
+        /// <summary>
         /// Send a sequence of key strokes to a html element.
         /// </summary>
         /// <param name="sessionID">ID of the session to route the command to</param>
